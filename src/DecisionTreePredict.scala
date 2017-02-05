@@ -173,9 +173,9 @@ object DecisionTreePredict {
                         evaluateParameter: String, impurityArray: Array[String], maxdepthArray: Array[Int], maxBinsArray: Array[Int]) =
   {
 
-    var dataBarChart = new DefaultCategoryDataset()
+    val dataBarChart = new DefaultCategoryDataset()
 
-    var dataLineChart = new DefaultCategoryDataset()
+    val dataLineChart = new DefaultCategoryDataset()
     for (impurity <- impurityArray; maxDepth <- maxdepthArray; maxBins <- maxBinsArray) {
       val (model, time) = trainModel(trainData, impurity, maxDepth, maxBins)
       val auc = evaluateModel(model, validationData)
