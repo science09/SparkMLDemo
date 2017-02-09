@@ -9,6 +9,8 @@ import org.apache.spark.{SparkConf, SparkContext}
 import org.jfree.data.category.DefaultCategoryDataset
 import org.joda.time.{DateTime, Duration}
 
+import scala.io.StdIn
+
 
 /**
   * Created by hadoop on 17-2-4.
@@ -31,7 +33,7 @@ object DecisionTreePredict {
     println("============训练评估阶段==============")
     println()
     print("是否需要进行参数调校 (Y:是  N:否) ? ")
-    if (readLine() == "Y") {
+    if (StdIn.readLine() == "Y") {
       val model = parametersTunning(trainData, validationData)
       println("==========测试阶段===============")
       val auc = evaluateModel(model, testData)
@@ -166,7 +168,8 @@ object DecisionTreePredict {
     println("-----所有参数交叉评估找出最好的参数组合---------")
     val bestModel = evaluateAllParameter(trainData, validationData, Array("gini", "entropy"),
       Array(3, 5, 10, 15, 20), Array(3, 5, 10, 50, 100))
-    return (bestModel)
+
+    bestModel
   }
 
   def evaluateParameter(trainData: RDD[LabeledPoint], validationData: RDD[LabeledPoint],

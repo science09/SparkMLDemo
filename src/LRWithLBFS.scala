@@ -9,7 +9,7 @@ import org.apache.spark.{SparkConf, SparkContext}
 /**
   * Created by hadoop on 17-1-9.
   */
-object LogisticRegressionWithLBFS {
+object LRWithLBFS {
 
   def main(args: Array[String]): Unit = {
 
