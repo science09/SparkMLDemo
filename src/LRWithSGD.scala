@@ -109,7 +109,7 @@ object LRWithSGD {
     scaledRDD.take(10).map {
       case (labelPoint, url) =>
         val predict = model.predict(labelPoint.features)
-        var predictDesc = {
+        val predictDesc = {
           predict match {
           case 0 => "暂时性网页(ephemeral)";
           case 1 => "长青网页(evergreen)";

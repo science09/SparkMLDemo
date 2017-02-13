@@ -94,7 +94,7 @@ object SVMWithSGDBinary {
       val categoryFeaturesArray = Array.ofDim[Double](categoriesMap.size)
       val categoryIdx = categoriesMap(fields(3))
       categoryFeaturesArray(categoryIdx) = 1
-      val numericalFeatures = trimmed.slice(4, fields.size)
+      val numericalFeatures = trimmed.slice(4, fields.length)
         .map(d => if (d == "?") 0.0 else d.toDouble)
       val label = 0
       val url = trimmed(0)
@@ -106,11 +106,12 @@ object SVMWithSGDBinary {
     scaledRDD.take(10).map {
       case (labelPoint, url) =>
         val predict = model.predict(labelPoint.features)
-        var predictDesc = { predict match {
+        val predictDesc = { predict match {
           case 0 => "暂时性网页(ephemeral)";
           case 1 => "长青网页(evergreen)"; }
         }
         println("网址：  " + url + "==>预测:" + predictDesc)
+        Unit
     }
   }
   def trainEvaluate(trainData: RDD[LabeledPoint], validationData: RDD[LabeledPoint]): SVMModel = {
@@ -195,7 +196,7 @@ object SVMWithSGDBinary {
 
         (numIterations, stepSize, regParam, auc)
       }
-    val BestEval = (evaluations.sortBy(_._4).reverse)(0)
+    val BestEval = evaluations.sortBy(_._4).reverse(0)
     println("调校后最佳参数：numIterations:" + BestEval._1 + "  ,stepSize:" + BestEval._2 + "  ,regParam:" + BestEval._3
       + "  ,结果AUC = " + BestEval._4)
 
