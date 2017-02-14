@@ -47,15 +47,19 @@ object SVMWithSGDBinary {
 
     }
 
-
     trainData.unpersist(); validationData.unpersist(); testData.unpersist()
   }
 
-  def PrepareData(sc: SparkContext): (RDD[LabeledPoint], RDD[LabeledPoint], RDD[LabeledPoint], Map[String, Int]) = {
+  def PrepareData(sc: SparkContext): (RDD[LabeledPoint],
+                                      RDD[LabeledPoint],
+                                      RDD[LabeledPoint],
+                                      Map[String, Int]) = {
     //----------------------1.导入转换数据-------------
     print("开始导入数据...")
     val rawDataWithHeader = sc.textFile("data/train.tsv")
-    val rawData = rawDataWithHeader.mapPartitionsWithIndex { (idx, iter) => if (idx == 0) iter.drop(1) else iter }
+    val rawData = rawDataWithHeader.mapPartitionsWithIndex {
+      (idx, iter) => if (idx == 0) iter.drop(1) else iter
+    }
     val lines = rawData.map(_.split("\t"))
     println("共计：" + lines.count() + "条")
     //----------------------2.创建训练评估所需数据 RDD[LabeledPoint]-------------
@@ -72,8 +76,9 @@ object SVMWithSGDBinary {
     }
     //进行数据标准化
     val featuresData = labelPointRDD.map(labelPoint => labelPoint.features)
-    val stdScaler = new StandardScaler(withMean = true, withStd = true).fit(featuresData)
-    val scaledRDD = labelPointRDD.map(labelPoint => LabeledPoint(labelPoint.label, stdScaler.transform(labelPoint.features)))
+    val stdScala = new StandardScaler(withMean = true, withStd = true).fit(featuresData)
+    val scaledRDD = labelPointRDD.map(labelPoint =>
+      LabeledPoint(labelPoint.label, stdScala.transform(labelPoint.features)))
     //----------------------3.以随机方式将数据分为3个部分并且返回-------------
     val Array(trainData, validationData, testData) = scaledRDD.randomSplit(Array(0.8, 0.1, 0.1))
     println("将数据分trainData:" + trainData.count() + "   validationData:" + validationData.count() + "   testData:" + testData.count())
@@ -85,7 +90,9 @@ object SVMWithSGDBinary {
     //----------------------1.导入转换数据-------------
     print("开始导入数据...")
     val rawDataWithHeader = sc.textFile("data/test.tsv")
-    val rawData = rawDataWithHeader.mapPartitionsWithIndex { (idx, iter) => if (idx == 0) iter.drop(1) else iter }
+    val rawData = rawDataWithHeader.mapPartitionsWithIndex {
+      (idx, iter) => if (idx == 0) iter.drop(1) else iter
+    }
     val lines = rawData.map(_.split("\t"))
     println("共计：" + lines.count() + "条")
     //----------------------2.创建训练评估所需数据 RDD[LabeledPoint]-------------
@@ -101,8 +108,11 @@ object SVMWithSGDBinary {
       (LabeledPoint(label, Vectors.dense(categoryFeaturesArray ++ numericalFeatures)), url)
     }
     val featuresRDD = labelPointRDD.map { case (labelPoint, url) => labelPoint.features }
-    val stdScaler = new StandardScaler(withMean = true, withStd = true).fit(featuresRDD)
-    val scaledRDD = labelPointRDD.map { case (labelPoint, url) => (LabeledPoint(labelPoint.label, stdScaler.transform(labelPoint.features)), url) }
+    val stdScala = new StandardScaler(withMean = true, withStd = true).fit(featuresRDD)
+    val scaledRDD = labelPointRDD.map {
+      case (labelPoint, url) =>
+        (LabeledPoint(labelPoint.label, stdScala.transform(labelPoint.features)), url)
+    }
     scaledRDD.take(10).map {
       case (labelPoint, url) =>
         val predict = model.predict(labelPoint.features)
@@ -114,23 +124,29 @@ object SVMWithSGDBinary {
         Unit
     }
   }
-  def trainEvaluate(trainData: RDD[LabeledPoint], validationData: RDD[LabeledPoint]): SVMModel = {
+
+  def trainEvaluate(trainData: RDD[LabeledPoint],
+                    validationData: RDD[LabeledPoint]): SVMModel = {
     print("开始训练...")
     val (model, time) = trainModel(trainData, 25, 50, 1)
     println("训练完成,所需时间:" + time + "毫秒")
     val AUC = evaluateModel(model, validationData)
     println("评估结果AUC=" + AUC)
 
-    model
+    return model
   }
 
-  def trainModel(trainData: RDD[LabeledPoint], numIterations: Int, stepSize: Double, regParam: Double): (SVMModel, Double) = {
+  def trainModel(trainData: RDD[LabeledPoint],
+                 numIterations: Int,
+                 stepSize: Double,
+                 regParam: Double): (SVMModel, Double) = {
     val startTime = new DateTime()
     val model = SVMWithSGD.train(trainData, numIterations, stepSize, regParam)
     val endTime = new DateTime()
     val duration = new Duration(startTime, endTime)
     (model, duration.getMillis())
   }
+
   def evaluateModel(model: SVMModel, validationData: RDD[LabeledPoint]): (Double) = {
     val scoreAndLabels = validationData.map { data =>
       val predict = model.predict(data.features)
@@ -141,6 +157,7 @@ object SVMWithSGDBinary {
 
     AUC
   }
+
   def predict(model: SVMModel, testData: RDD[LabeledPoint]): Unit = {
     println("最佳模型使用testData前10条数据进行预测:")
     val testPredictData = testData.take(10)
@@ -151,21 +168,31 @@ object SVMWithSGDBinary {
     }
   }
 
-  def parametersTunning(trainData: RDD[LabeledPoint], validationData: RDD[LabeledPoint]): SVMModel = {
+  def parametersTunning(trainData: RDD[LabeledPoint],
+                        validationData: RDD[LabeledPoint]): SVMModel = {
     println("-----评估 numIterations参数使用 1, 3, 5, 15, 25---------")
-    evaluateParameter(trainData, validationData, "numIterations", Array(1, 3, 5, 15, 25), Array(100), Array(1))
+    evaluateParameter(trainData, validationData, "numIterations",
+      Array(1, 3, 5, 15, 25), Array(100), Array(1))
     println("-----评估stepSize参数使用 (10, 50, 100, 200)---------")
-    evaluateParameter(trainData, validationData, "stepSize", Array(25), Array(10, 50, 100, 200), Array(1))
+    evaluateParameter(trainData, validationData, "stepSize",
+      Array(25), Array(10, 50, 100, 200), Array(1))
     println("-----评估regParam参数使用 (0.01, 0.1, 1)---------")
-    evaluateParameter(trainData, validationData, "regParam", Array(25), Array(100), Array(0.01, 0.1, 1))
+    evaluateParameter(trainData, validationData, "regParam",
+      Array(25), Array(100), Array(0.01, 0.1, 1))
     println("-----所有参数交叉评估找出最好的参数组合---------")
-    val bestModel = evaluateAllParameter(trainData, validationData, Array(1, 3, 5, 15, 25),
+    val bestModel = evaluateAllParameter(trainData,
+      validationData, Array(1, 3, 5, 15, 25),
       Array(10, 50, 100, 200), Array(0.01, 0.1, 1))
 
     bestModel
   }
-  def evaluateParameter(trainData: RDD[LabeledPoint], validationData: RDD[LabeledPoint],
-                        evaluateParameter: String, numIterationsArray: Array[Int], stepSizeArray: Array[Double], regParamArray: Array[Double]) =
+
+  def evaluateParameter(trainData: RDD[LabeledPoint],
+                        validationData: RDD[LabeledPoint],
+                        evaluateParameter: String,
+                        numIterationsArray: Array[Int],
+                        stepSizeArray: Array[Double],
+                        regParamArray: Array[Double]) =
   {
     val dataBarChart = new DefaultCategoryDataset()
     val dataLineChart = new DefaultCategoryDataset()
@@ -184,7 +211,9 @@ object SVMWithSGDBinary {
 
     }
 
-    Chart.plotBarLineChart("SVMWithSGD evaluations " + evaluateParameter, evaluateParameter, "AUC", 0.48, 0.7, "Time", dataBarChart, dataLineChart)
+    Chart.plotBarLineChart("SVMWithSGD evaluations " + evaluateParameter,
+      evaluateParameter, "AUC", 0.48, 0.7, "Time",
+      dataBarChart, dataLineChart)
   }
 
   def evaluateAllParameter(trainData: RDD[LabeledPoint], validationData: RDD[LabeledPoint], numIterationsArray: Array[Int], stepSizeArray: Array[Double], regParamArray: Array[Double]): SVMModel =
@@ -205,6 +234,7 @@ object SVMWithSGDBinary {
 
     bestModel
   }
+
   def testModel(model: SVMModel, testData: RDD[LabeledPoint]): Unit = {
     val auc = evaluateModel(model, testData)
     println("使用testData测试,结果 AUC:" + auc)
@@ -217,6 +247,7 @@ object SVMWithSGDBinary {
     }
 
   }
+  
   def SetLogger() = {
     Logger.getLogger("org").setLevel(Level.OFF)
     Logger.getLogger("com").setLevel(Level.OFF)
